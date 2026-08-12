@@ -5,14 +5,37 @@ on:
     - cron: "0 0 * * 1"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+concurrency:
+  group: cloudflare-temp-email-upstream-sync
+  cancel-in-progress: false
+
 jobs:
   sync_latest_from_upstream:
-    name: Sync latest commits from upstream repo
+    name: Sync latest commits from upstream
     runs-on: ubuntu-latest
     if: ${{ github.event.repository.fork }}
 
     steps:
-      - name: Sync upstream changes
-        run: gh repo sync ${{ github.repository }} --source dreamhunter2333/cloudflare_temp_email --branch main
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout fork
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Merge upstream changes without dropping fork overlays
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/dreamhunter2333/cloudflare_temp_email.git
+          git fetch --no-tags upstream main
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Fork already contains upstream/main"
+            exit 0
+          fi
+          git merge --no-edit upstream/main
+          git push origin HEAD:main
