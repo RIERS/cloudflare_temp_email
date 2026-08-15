@@ -60,6 +60,7 @@ jobs:
           cd worker/
           umask 077
           printf '%s\n' "$WRANGLER_TOML_CONTENT" > wrangler.toml
+          python3 ../scripts/apply_domains.py wrangler.toml ../.github/config/domains.json
           
           pnpm install --no-frozen-lockfile
 
